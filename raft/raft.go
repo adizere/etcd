@@ -487,6 +487,7 @@ func (r *raft) sendAppend(to uint64) {
 			// optimistically increase the next when in ProgressStateReplicate
 			case ProgressStateReplicate:
 				last := m.Entries[n-1].Index
+				r.logger.Infof("[heh %v] sendAppend to %v for last: %v", r.id, to, last)
 				pr.optimisticUpdate(last)
 				pr.ins.add(last)
 			case ProgressStateProbe:
@@ -603,6 +604,7 @@ func (r *raft) appendEntry(es ...pb.Entry) {
 	for i := range es {
 		es[i].Term = r.Term
 		es[i].Index = li + 1 + uint64(i)
+		r.logger.Infof("[counting heh %v] [iid: %v] START", r.id % 100, es[i].Index)
 	}
 	// use latest "last" index after truncate/append
 	li = r.raftLog.append(es...)
@@ -914,6 +916,9 @@ func (r *raft) Step(m pb.Message) error {
 type stepFunc func(r *raft, m pb.Message) error
 
 func stepLeader(r *raft, m pb.Message) error {
+	if m.Type != pb.MsgBeat && m.Type != pb.MsgHeartbeatResp && m.Type != pb.MsgCheckQuorum {
+		r.logger.Infof("[heh %v] stepLeader: %v", r.id, m.Type)
+	}
 	// These message types do not require any progress for m.From.
 	switch m.Type {
 	case pb.MsgBeat:
@@ -1006,19 +1011,30 @@ func stepLeader(r *raft, m pb.Message) error {
 		} else {
 			oldPaused := pr.IsPaused()
 			if pr.maybeUpdate(m.Index) {
+				r.logger.Infof("[counting heh %v] [iid: %v] stepLeader ", r.id % 100, m.Index)
+				r.logger.Infof("\t\t[heh %v] stepLeader -- MsgAppResp maybeUpdate true", r.id)
 				switch {
 				case pr.State == ProgressStateProbe:
+					r.logger.Infof("\t\t[heh %v] stepLeader -- MsgAppResp ProgressStateProbe", r.id)
 					pr.becomeReplicate()
 				case pr.State == ProgressStateSnapshot && pr.needSnapshotAbort():
+					r.logger.Infof("\t\t[heh %v] stepLeader -- MsgAppResp ProgressStateSnapshot && pr.needSnapshotAbort()", r.id)
 					r.logger.Debugf("%x snapshot aborted, resumed sending replication messages to %x [%s]", r.id, m.From, pr)
 					pr.becomeProbe()
 				case pr.State == ProgressStateReplicate:
+					r.logger.Infof("\t\t[heh %v] stepLeader -- MsgAppResp ProgressStateReplicate", r.id)
 					pr.ins.freeTo(m.Index)
 				}
 
 				if r.maybeCommit() {
+					// r.logger.Infof("\t\t[counting heh %v] commit ? %d up to %d", r.id,
+					// 	m.Commit, m.Index)
+					// for _, e := range m.Entries {
+					// }
+					r.logger.Infof("\t\t[counting heh %v] [iid: %v] maybnd", r.id % 100, m.Index)
 					r.bcastAppend()
 				} else if oldPaused {
+					r.logger.Infof("\t\t[heh %v] stepLeader -- MsgAppResp oldPaused true", r.id)
 					// update() reset the wait state on this node. If we had delayed sending
 					// an update before, send it now.
 					r.sendAppend(m.From)
@@ -1121,6 +1137,7 @@ func stepLeader(r *raft, m pb.Message) error {
 // stepCandidate is shared by StateCandidate and StatePreCandidate; the difference is
 // whether they respond to MsgVoteResp or MsgPreVoteResp.
 func stepCandidate(r *raft, m pb.Message) error {
+	r.logger.Infof("[heh %v] stepCandidate: %v", r.id, m.Type)
 	// Only handle vote responses corresponding to our candidacy (while in
 	// StateCandidate, we may get stale MsgPreVoteResp messages in this term from
 	// our pre-candidate state).
@@ -1166,6 +1183,9 @@ func stepCandidate(r *raft, m pb.Message) error {
 }
 
 func stepFollower(r *raft, m pb.Message) error {
+	if m.Type != pb.MsgHeartbeat {
+		r.logger.Infof("[heh %v] stepFollower: %v", r.id, m.Type)
+	}
 	switch m.Type {
 	case pb.MsgProp:
 		if r.lead == None {
@@ -1230,6 +1250,12 @@ func (r *raft) handleAppendEntries(m pb.Message) {
 	}
 
 	if mlastIndex, ok := r.raftLog.maybeAppend(m.Index, m.LogTerm, m.Commit, m.Entries...); ok {
+		r.logger.Infof("[counting heh %v] [iid: %v] follower <- : %v / %v / %v", r.id % 100, mlastIndex, m.Index, m.LogTerm, m.Commit)
+
+		if r.id == 14838933330594411002 && mlastIndex == 450 {
+			panic("Should exit now")
+		}
+
 		r.send(pb.Message{To: m.From, Type: pb.MsgAppResp, Index: mlastIndex})
 	} else {
 		r.logger.Debugf("%x [logterm: %d, index: %d] rejected msgApp [logterm: %d, index: %d] from %x",

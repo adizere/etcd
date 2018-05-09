@@ -118,6 +118,7 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "HEAD", "GET", "PUT", "POST", "DELETE") {
 		return
 	}
+	// plog.Warningf("[counting heh] keysHandler: ServeHTTP: %v", r.Method)
 
 	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
@@ -145,6 +146,8 @@ func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		reportRequestFailed(rr, err)
 		return
 	}
+	// plog.Warningf("[counting heh] keysHandler: ServeHTTP: response ready %v", resp)
+	// plog.Warningf("\t\t[counting heh] [iid: %v] END", resp)
 	switch {
 	case resp.Event != nil:
 		if err := writeKeyEvent(w, resp, noValueOnSuccess); err != nil {
