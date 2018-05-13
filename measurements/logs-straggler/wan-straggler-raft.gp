@@ -1,10 +1,10 @@
 reset
 set terminal postscript eps size 14,4 enhanced color font 'Helvetica,32'
-set output "wan-straggler.eps"
+set output "wan-straggler-raft.eps"
 
 set ytics out nomirror offset 0.7 scale 0.9
 set y2tics out nomirror offset -0.7 scale 0.9
-set xtics out nomirror scale 0.7 offset -0.5,0 rotate by -60
+set xtics out nomirror scale 0.7 offset -0.5,0 #rotate by -60
 
 
 set yrange [0:140]

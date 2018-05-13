@@ -1,10 +1,10 @@
 reset
 set terminal postscript eps size 14,4 enhanced color font 'Helvetica,32'
-set output "wan-switch.eps"
+set output "wan-switch-raft.eps"
 
 set ytics out nomirror offset 0.7 scale 0.9
 set y2tics out nomirror offset -0.7 scale 0.9
-set xtics out nomirror scale 0.7 offset -0.5,0 rotate by -60
+set xtics out nomirror scale 0.7 offset -0.5,0 #rotate by -60
 
 
 set yrange [0:140]
@@ -27,6 +27,10 @@ set grid xtics mxtics ytics mytics back ls 12, ls 13
 set xlabel "SMR command number"
 set ylabel "Cost (# of messages)" offset 2
 set y2label "Latency (milliseconds)" offset -2
+
+set style line 10 lc rgb 'black' lt 1
+set arrow from 550,118 to 454,50 size 15,15 filled ls 10 lw 8 front
+set label 1 "Quorum switches\n to include the straggler" at 550,122 front font 'Helvetica,32'
 
 # set label "6099.1" at screen 0.094,0.84 rotate by -60 font 'Helvetica,26'
 # set label "3098.5" at screen 0.11,0.63   rotate by -60 font 'Helvetica,26'
